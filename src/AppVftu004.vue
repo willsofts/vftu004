@@ -11,13 +11,12 @@
 </template>
 <script>
 import { ref } from 'vue';
-import $ from "jquery";
 import { PageHeader } from '@willsofts/will-control';
 import SearchForm from '@/components/SearchForm.vue';
 import EntryForm from '@/components/EntryForm.vue';
 import { getLabelModel, getMultiLanguagesModel } from "@willsofts/will-app";
-import { DEFAULT_CONTENT_TYPE, getDefaultLanguage, setDefaultLanguage, getApiUrl } from "@willsofts/will-app";
-import { startApplication, serializeParameters } from "@willsofts/will-app";
+import { getDefaultLanguage, setDefaultLanguage } from "@willsofts/will-app";
+import { startApplication } from "@willsofts/will-app";
 
 const buildVersion = process.env.VUE_APP_BUILD_DATETIME;
 export default {
@@ -25,14 +24,9 @@ export default {
     PageHeader, SearchForm, EntryForm
   },
   setup() {
-    const dataChunk = {};
-    const dataCategory = {
-      tkexpire: [{id: "0", text: "Expired"}, {id: "1", text: "Never Expired"}],
-    };
     let labels = ref(getLabelModel());
-    let alreadyLoading = ref(false);
     const multiLanguages = ref(getMultiLanguagesModel());
-    return { buildVersion, multiLanguages, labels, dataCategory, dataChunk, alreadyLoading };
+    return { buildVersion, multiLanguages, labels };
   },
   mounted() {
     console.log("App: mounted ...");
@@ -41,9 +35,7 @@ export default {
       startApplication("vftu004",(data) => {
         this.multiLanguages = getMultiLanguagesModel();
         this.messagingHandler(data);
-        this.loadDataCategories(!this.alreadyLoading,() => {
-          this.$refs.pageHeader.changeLanguage(getDefaultLanguage());
-        });
+        this.$refs.pageHeader.changeLanguage(getDefaultLanguage());
       });
     });
   },
@@ -55,48 +47,6 @@ export default {
       setDefaultLanguage(lang);
       let labelModel = getLabelModel(lang);
       this.labels = labelModel;
-      this.resetDataCategories(lang);
-    },
-    loadDataCategories(loading,callback) {
-      console.log("loadDataCategories: loading",loading);
-      if(!loading) return;
-      let jsondata = {names: ["tkexpire"]};
-      let formdata = serializeParameters(jsondata);
-      $.ajax({
-        url: getApiUrl()+"/api/category/lists",
-        data: formdata.jsondata,
-        headers : formdata.headers,
-        type: "POST",
-        dataType: "json",
-        contentType: DEFAULT_CONTENT_TYPE,
-        error : function(transport,status,errorThrown) {
-          console.error("loadDataCategories: error: status",status,"errorThrown",errorThrown);
-        },
-        success: (data) => {
-          this.alreadyLoading = true;
-          console.log("loadDataCategories: success",data);
-          if(data.body) {
-            for(let item of data.body) {
-              if(item.category && item.resultset && item.resultset.rows) {
-                this.dataChunk[item.category] = item.resultset.rows;
-              }
-            }
-            console.log("data chunk",this.dataChunk);
-            this.resetDataCategories();
-            if(callback) callback();
-          }
-        }
-      });	
-    },
-    resetDataCategories(lang) {
-      if(!lang) lang = getDefaultLanguage();
-      if(!lang || lang.trim().length==0) lang = "EN";
-      let tkexpire;
-      let tk_category = this.dataChunk["tkexpire"];
-      if(tk_category) {
-        tkexpire = tk_category.map((item) => { return { id: item.typeid, text: "TH"==lang?item.nameth:item.nameen } });
-      }
-      if(tkexpire) this.dataCategory.tkexpire = tkexpire;
     },
     dataSelected(item,action) {
       //listen action from search form

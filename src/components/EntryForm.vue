@@ -16,21 +16,23 @@
           </div>
         </div>
         <div class="row row-height hidden-layer">
-          <div class="col-height col-md-4">
-            <label for="expireflag">{{ labels.expireflag_label }}</label>
+          <div class="col-height col-md-3">
+            <label for="expiredayoption">{{ labels.expireday_label }}</label>
             <fieldset :disabled="!insertMode">
-            <select ref="expireflag" v-model="localData.expireflag" id="expireflag" class="form-control input-md">
-              <option v-for="item in dataCategory.tkexpire" :key="item.id" :value="item.id">{{item.text}}</option>
+            <select ref="expiredayoption" v-model="localData.expiredayoption" id="expiredayoption" class="form-control input-md">
+              <option v-for="(item,index) in daysOption" :key="index" :value="item">{{item}}</option>
+              <option value="CUSTOM">{{ labels.customday_label }}</option>
+              <option value="NEVER">{{ labels.neverexpire_label }}</option>
             </select>
             </fieldset>
           </div>
-          <div class="col-height col-md-4">
-            <label for="expireday">{{ labels.expireday_label }}</label>
-            <div class="input-group has-validation" :class="{'has-error': v$.expireday.$error}">
-              <InputNumber ref="expireday" v-model="localData.expireday" id="expireday" :disabled="!canEntry" /> 
+          <div class="col-height col-md-3">
+            <label for="expiredaycustom">{{ labels.days_label }}</label>
+            <div class="input-group has-validation" :class="{'has-error': v$.expiredaycustom.$error}">
+              <InputNumber ref="expiredaycustom" v-model="localData.expiredaycustom" id="expireday" :disabled="!canEntry" /> 
               <label class="required" v-if="canEntry">*</label>
             </div>
-            <span v-if="v$.expireday.$error" class="has-error">{{ v$.expireday.$errors[0].$message }}</span>
+            <span v-if="v$.expiredaycustom.$error" class="has-error">{{ v$.expiredaycustom.$errors[0].$message }}</span>
           </div>
         </div>
         <div class="row row-height hidden-layer copy-layer" v-show="displayCopy">
@@ -70,25 +72,29 @@
 <script>
 import { ref, computed, watch } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
-import { required, helpers } from '@vuelidate/validators';
+import { required, helpers, minValue } from '@vuelidate/validators';
 import $ from "jquery";
 import { DEFAULT_CONTENT_TYPE, getApiUrl, disableControls }  from '@willsofts/will-app';
 import { startWaiting, stopWaiting, submitFailure, detectErrorResponse }  from '@willsofts/will-app';
 import { confirmUpdate, confirmSave, confirmDelete, successbox, serializeParameters } from '@willsofts/will-app';
+import { replaceString } from "@willsofts/will-app";
 import { InputNumber } from '@willsofts/will-control';
 import DialogForm from './DialogForm.vue';
 
 const APP_URL = "/api/sftu004";
+const defaultExpired = "30";
 const defaultData = {
   keyid: "",
   keyname: "",
   expireflag: "0",
   expireday: "30",
+  expiredayoption: "30",
+  expiredaycustom: "",
   keypass: "",
   expiredate: "",
   expiretime: "",
 };
-
+const defaultDays = ["30","60","90","120","150","180"];
 export default {
   components: {
     DialogForm, InputNumber
@@ -104,36 +110,44 @@ export default {
     const localData = ref({ ...defaultData }); 
     const disabledKeyField = ref(false);
     const reqalert = ref(props.labels.empty_alert);
+    const minalert = ref(props.labels.minvalue_alert);
     const requiredMessage = () => {
       return helpers.withMessage(reqalert, required);
     }
+    const minValueMessage = () => {
+      return helpers.withMessage((params) => {
+        return replaceString(minalert.value,[params.$params.min]); 
+      }, minValue(1));
+    }
     const requiredField = () => { 
       let inserting = mode.value.action=="insert" || mode.value.action=="new";
-      return inserting && (localData.value.expireflag == "0") ? helpers.withMessage(reqalert, required) : false; 
+      return inserting && (localData.value.expiredayoption == "CUSTOM") ? helpers.withMessage(reqalert, required) : false; 
     };
     const validateRules = computed(() => { 
       return {
         keyname: { required: requiredMessage() },
-        expireday: { required: requiredField() },
+        expiredaycustom: { required: requiredField(), minValue: minValueMessage() },
       } 
     });
     const v$ = useVuelidate(validateRules, localData, { $lazy: true, $autoDirty: true });
     const displayCopy = ref(false);
-    const keepexpireday = ref("30");
-    watch(() => localData.value.expireflag, (newFlag) => {
-      if(newFlag == "0") {
-        localData.value.expireday = keepexpireday.value;
+    const keepexpireday = ref(defaultExpired);
+    watch(() => localData.value.expiredayoption, (newOption) => {
+      if(newOption == "CUSTOM") {
+        localData.value.expiredaycustom = keepexpireday.value;
       } else {
-        keepexpireday.value = localData.value.expireday;
-        if(keepexpireday.value=="") keepexpireday.value = "30";
-        localData.value.expireday = "";
+        keepexpireday.value = localData.value.expiredaycustom;
+        if(keepexpireday.value=="") keepexpireday.value = defaultExpired;
+        localData.value.expiredaycustom = "";
       }
-    });
-    return { mode, v$, localData, disabledKeyField, reqalert, displayCopy, keepexpireday };
+    });    
+    const daysOption = ref(defaultDays);
+    return { mode, v$, localData, disabledKeyField, reqalert, minalert, displayCopy, keepexpireday, daysOption };
   },
   created() {
     watch(this.$props, (newProps) => {      
       this.reqalert = newProps.labels.empty_alert;
+      this.minalert = newProps.labels.minvalue_alert;
     });
   },
   computed: {
@@ -144,7 +158,7 @@ export default {
       return this.mode.action=="update" || this.mode.action=="edit";
     },
     canEntry() {
-      return (this.mode.action=="insert" || this.mode.action=="new") && (this.localData.expireflag == "0");
+      return (this.mode.action=="insert" || this.mode.action=="new") && (this.localData.expiredayoption == "CUSTOM");
     }
   },
   mounted() {
@@ -206,6 +220,7 @@ export default {
       //enable key field
       this.disabledKeyField = false;
       this.displayCopy = false;
+      this.keepexpireday = defaultExpired;
     },
     scrapeData(dataset) {
       let resData = {...defaultData};
@@ -217,10 +232,18 @@ export default {
           return data;
         },{});
       }
+      resData.expiredayoption = "CUSTOM";
+      resData.expiredaycustom = String(resData.expireday);
+      let foundexpireday = defaultDays.find((item) => item == resData.expireday);
+      if(foundexpireday) {
+        resData.expiredayoption = foundexpireday;
+        resData.expiredaycustom = "";
+      }
       if(resData.expireflag=="1") {
         resData.expiredate = "";
         resData.expiretime = "";
-        resData.expireday = "";
+        resData.expiredayoption = "NEVER";
+        resData.expiredaycustom = "";
       }
       return resData;
     },
@@ -230,6 +253,11 @@ export default {
     },
     startSaveRecord() {
       confirmSave(() => {
+        this.localData.expireday = "";
+        this.localData.expireflag = this.localData.expiredayoption == "NEVER" ? "1" : "0";
+        if(this.localData.expireflag=="0") {
+          this.localData.expireday = this.localData.expiredayoption == "CUSTOM" ? this.localData.expiredaycustom : this.localData.expiredayoption;
+        }
         this.saveRecord(this.localData);
       });
     },
@@ -263,13 +291,14 @@ export default {
             console.log("success",data);
             if(detectErrorResponse(data)) return;
             let dataset = this.scrapeData(data.body.dataset);
+            this.keepexpireday = String(dataset.expireday);
+            console.log("scrapeData:",dataset);
             this.reset(dataset,{action:"view"});
             this.v$.$reset();
             this.disabledKeyField = true;
             this.displayCopy = true;
             successbox(() => {
               //reset data for new record insert
-              //this.resetRecord();
               this.$emit('data-saved',dataRecord,data);
             });
           }
@@ -321,6 +350,8 @@ export default {
           console.log("retrieveRecord: success",data);
           if(data.body.dataset) {
             let dataset = this.scrapeData(data.body.dataset);
+            this.keepexpireday = String(dataset.expireday);
+            console.log("scrapeData:",dataset);
             this.reset(dataset,{action:"edit"});
             this.v$.$reset();
             this.disabledKeyField = true;

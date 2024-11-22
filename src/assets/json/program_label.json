@@ -17,7 +17,11 @@
 			{"name": "expireday_label", "value": "จำนวนวันหมดอายุ"},
 			{"name": "keypass_label", "value": "โทเค็ํน"},
 			{"name": "expiredate_label", "value": "หมดอายุวันที่"},
-			{"name": "expiretime_label", "value": "หมดอายุเวลา"}
+			{"name": "expiretime_label", "value": "หมดอายุเวลา"},
+			{"name": "customday_label", "value": "กำหนดเอง"},
+			{"name": "days_label", "value": "วัน"},
+			{"name": "neverexpire_label", "value": "ไม่มีวันหมดอายุ"},
+			{"name": "minvalue_alert", "value": "ค่าต่ำสุดคือ %s"}
 		]
 	},
 	{
@@ -38,7 +42,11 @@
 			{"name": "expireday_label", "value": "Expire Day"},
 			{"name": "keypass_label", "value": "Token"},
 			{"name": "expiredate_label", "value": "Expire Date"},
-			{"name": "expiretime_label", "value": "Expire Time"}
+			{"name": "expiretime_label", "value": "Expire Time"},
+			{"name": "customday_label", "value": "Custom"},
+			{"name": "days_label", "value": "Day"},
+			{"name": "neverexpire_label", "value": "Never Expired"},
+			{"name": "minvalue_alert", "value": "Minimum value is %s"}
 		]
 	}
 ]
